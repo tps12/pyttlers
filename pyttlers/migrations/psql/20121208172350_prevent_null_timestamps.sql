@@ -1,0 +1,5 @@
+BEGIN;
+    INSERT INTO migrations (version) SELECT '20121208172350';
+    ALTER TABLE users ALTER COLUMN created_at SET NOT NULL;
+    ALTER TABLE users ALTER COLUMN updated_at SET NOT NULL;
+COMMIT;

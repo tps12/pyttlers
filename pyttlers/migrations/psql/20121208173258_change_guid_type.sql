@@ -1,0 +1,4 @@
+BEGIN;
+    INSERT INTO migrations (version) SELECT '20121208173258';
+    ALTER TABLE users ALTER COLUMN guid TYPE UUID USING guid::uuid;
+COMMIT;

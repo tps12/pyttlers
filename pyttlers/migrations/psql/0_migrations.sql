@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS migrations (version VARCHAR(32) PRIMARY KEY);

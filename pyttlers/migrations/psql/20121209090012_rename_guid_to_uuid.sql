@@ -1,0 +1,4 @@
+BEGIN;
+    INSERT INTO migrations (version) SELECT '20121209090012';
+    ALTER TABLE users RENAME COLUMN guid TO uuid;
+COMMIT;
