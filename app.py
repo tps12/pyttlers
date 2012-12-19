@@ -1,14 +1,17 @@
 import logging
 from os import environ
 from sys import stdout
-from urlparse import urlparse as parse
+from urlparse import urlparse, urlunparse
 
 import psycopg2
+import pymongo
 
 from pyttlers.resources.user import User
 from pyttlers.resources.users import Users
+from pyttlers.resources.game import Game
+from pyttlers.resources.games import Games
 
-resources = [Users, User]
+resources = [Users, User, Game, Games]
 
 # configure logging
 try:
@@ -18,13 +21,18 @@ except KeyError:
 logging.getLogger().setLevel(lvl)
 
 class Databases(object):
-    def __init__(self, users_url):
-        url = parse(users_url)
+    def __init__(self, usersurl, gamesurl):
+        url = urlparse(usersurl)
         if url.scheme == 'postgres':
             self.users = psycopg2.connect(dbname=url.path[1:], user=url.username, password=url.password, host=url.hostname)
         else:
             raise ValueError
-db = Databases(environ['DATABASE_URL'])
+        url = urlparse(gamesurl)
+        if url.scheme == 'mongodb':
+            self.games = pymongo.Connection(gamesurl)[url.path[1:]]
+        else:
+            raise ValueError
+db = Databases(environ['DATABASE_URL'], environ['MONGOHQ_URL'])
 
 def application(env, start_response):
     env['db'] = db

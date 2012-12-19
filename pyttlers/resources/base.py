@@ -43,16 +43,20 @@ class Base(object):
 
             success, location, data = perform(self, env, rin, wout)
             if success:
-                if data:
-                    content_type = ('Content-Type', outtype)
-                    if location:
-                        start_response('201 Created', [content_type, ('Location', location)])
+                if location:
+                    if data:
+                        start_response('201 Created', [('Content-Type', outtype), ('Location', location)])
+                        return [data]
                     else:
-                        start_response('200 OK', [content_type])
-                    return [data]
-                else:
-                    start_response('204 No Content', [])
-                    return []
+                        start_response('201 Created', [('Location', location)])
+                        return []
+                else:    
+                    if data:
+                        start_response('200 OK', [('Content-Type', outtype)])
+                        return [data]
+                    else:
+                        start_response('204 No Content', [])
+                        return []
             else:
                 start_response('400 Bad Request', [('Content-Type', 'text/plain')])
                 return [data]
