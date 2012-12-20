@@ -1,5 +1,5 @@
 from mock import MagicMock
-from re import compile
+from re import compile, match
 from unittest import TestCase
 
 import os, sys
@@ -38,13 +38,77 @@ class ResourceBaseTestCase(TestCase):
     
     class Resource(Base):
         url = '/some/resource/'
-    Resource.methods = { 'GET': { }, 'POST': { } }
+        perform = MagicMock()
 
-class Respond405(ResourceBaseTestCase):
+    Resource.methods = {
+        'POST': [ { 'test/input.type': None }, None, { } ],
+        'GET': [ { }, None, { 'test/output.type': None } ]
+    }
+
+class MethodNotAllowed(ResourceBaseTestCase):
     def setUp(self):
         self.env = { 'REQUEST_METHOD': 'PUT' }
         self.resource = self.Resource()
 
-    def runTest(self):
+    def test_response(self):
         self.resource.respond(self.env, self.start_response)
         self.start_response.assert_called_with(StringMatching('^405'), HeadersIncluding(('Content-Type', 'text/plain')))
+
+    def test_entity(self):
+        text = self.resource.respond(self.env, self.start_response)[0]
+        self.assertTrue(self.resource.url in text)
+        self.assertTrue(all([m in text for m in self.resource.methods.keys()]))
+
+class UnsupportedType(ResourceBaseTestCase):
+    def setUp(self):
+        self.env = {
+            'REQUEST_METHOD': 'POST',
+            'CONTENT_TYPE': 'some/unsupported.type',
+            'CONTENT_LENGTH': 314
+        }
+        self.resource = self.Resource()
+
+    def test_response(self):
+        self.resource.respond(self.env, self.start_response)
+        self.start_response.assert_called_with(StringMatching('^415'), HeadersIncluding(('Content-Type', 'text/plain')))
+
+    def test_entity(self):
+        text = self.resource.respond(self.env, self.start_response)[0]
+        self.assertTrue(self.resource.url in text)
+        self.assertTrue(all([t in text for t in self.resource.methods['POST'][0].keys()]))
+
+class Unacceptable(ResourceBaseTestCase):
+    def setUp(self):
+        self.env = {
+            'REQUEST_METHOD': 'GET',
+            'HTTP_ACCEPT': 'some/unsupported.type'
+        }
+        self.resource = self.Resource()
+
+    def test_response(self):
+        self.resource.respond(self.env, self.start_response)
+        self.start_response.assert_called_with(StringMatching('^406'), HeadersIncluding(('Content-Type', 'text/plain')))
+
+    def test_entity(self):
+        text = self.resource.respond(self.env, self.start_response)[0]
+        self.assertTrue(self.resource.url in text)
+        self.assertTrue(all([t in text for t in self.resource.methods['GET'][2].keys()]))
+
+class UnexpectedEntity(ResourceBaseTestCase):
+    def setUp(self):
+        self.env = {
+            'REQUEST_METHOD': 'GET',
+            'CONTENT_TYPE': 'test/input.type',
+            'CONTENT_LENGTH': 314,
+            'HTTP_ACCEPT': 'test/output.type'
+        }
+        self.resource = self.Resource()
+
+    def test_response(self):
+        self.resource.respond(self.env, self.start_response)
+        self.start_response.assert_called_with(StringMatching('^413'), HeadersIncluding(('Content-Type', 'text/plain')))
+
+    def test_entity(self):
+        text = self.resource.respond(self.env, self.start_response)[0]
+        self.assertTrue(self.resource.url in text)
+
